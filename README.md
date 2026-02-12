@@ -16,6 +16,13 @@
 
 ---
 
+## 차트
+
+<img width="1858" height="1283" alt="image" src="https://github.com/user-attachments/assets/f206990f-62dd-4d3a-9ea0-782381d9bcfd" />
+
+
+---
+
 ## 아키텍처
 
 ```
