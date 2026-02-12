@@ -137,6 +137,12 @@ const chart = new Chart(chartEl, {
       legend: { display: false },
       tooltip: {
         callbacks: {
+          title: (ctx) => {
+            if (ctx.length > 0) {
+              return ctx[0].raw.name || "Event";
+            }
+            return "Event";
+          },
           label: (ctx) => {
             const raw = ctx.raw;
             return `${raw.metricKey}: ${raw.value} (p${raw.percentile})`;
@@ -191,6 +197,14 @@ async function loadEventDetail(eventId) {
   const trace = event.trace || [];
   const outlierReasons = event.outlierReasons || [];
   const severity = event.severity || "normal";
+  const eventName = event.name || "Unknown Event";
+  const serviceName = event.serviceName || "unknown";
+
+  // 이벤트 이름을 큰 헤더로 표시
+  const eventHeader = `<div style="padding:12px;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:#fff;border-radius:8px;margin-bottom:16px;">
+    <div style="font-size:18px;font-weight:bold;margin-bottom:4px;">${eventName}</div>
+    <div style="font-size:12px;opacity:0.9;">${serviceName} • ${severity.toUpperCase()}</div>
+  </div>`;
 
   const timeRows = [
     { label: "startTime", value: formatTime(event.startTime) },
@@ -249,6 +263,7 @@ async function loadEventDetail(eventId) {
   }
 
   detailMetrics.innerHTML =
+    eventHeader +
     renderGroup("Time", timeRows) +
     renderGroup("Severity", [
       { label: "level", value: severity }
