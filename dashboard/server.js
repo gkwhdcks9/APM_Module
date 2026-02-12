@@ -89,7 +89,13 @@ function processPayload(payload, options = {}) {
       continue;
     }
     updateHistogram(key, value);
-    const percentile = toPercentile(key, value);
+    let percentile = toPercentile(key, value);
+    
+    // errorCount는 낮을수록 좋으므로 percentile 역전
+    if (key === "errorCount") {
+      percentile = 100 - percentile;
+    }
+    
     percentiles[key] = percentile;
     if (key === "durationMs") {
       durationPercentile = percentile;

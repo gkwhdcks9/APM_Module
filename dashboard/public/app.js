@@ -48,17 +48,118 @@ function renderGroup(title, rows) {
   const items = rows
     .map((row) => `<div class="kv-row"><span>${row.label}</span><span>${row.value}</span></div>`)
     .join("");
-  return `<div class="kv-group"><div class="kv-title">${title}</div>${items}</div>`;
+  return `<div class="kv-group" style="background:rgba(255,255,255,0.03);border-radius:8px;padding:12px;margin-bottom:12px;">
+    <div class="kv-title">${title}</div>${items}
+  </div>`;
 }
 
-function renderOutlierReasons(reasons) {
-  if (!Array.isArray(reasons) || reasons.length === 0) {
+function renderSummary(severity, outlierReasons, metrics, percentiles) {
+  if (severity === "normal" || !Array.isArray(outlierReasons) || outlierReasons.length === 0) {
     return "";
   }
-  const badges = reasons
-    .map((reason) => `<span class="badge">${reason}</span>`)
-    .join("");
-  return `<div class="kv-group"><div class="kv-title">Outlier Reasons</div><div class="badge-row">${badges}</div></div>`;
+
+  const summaries = [];
+  
+  if (outlierReasons.includes("latency_p99")) {
+    summaries.push(`⚠️ Duration is extremely high (p99: ${metrics.durationMs?.toFixed(2)}ms)`);
+  } else if (outlierReasons.includes("latency_p95")) {
+    summaries.push(`⚠️ Duration is high (p95: ${metrics.durationMs?.toFixed(2)}ms)`);
+  }
+  
+  if (outlierReasons.includes("error_count_critical")) {
+    summaries.push(`❌ Errors detected (${metrics.errorCount} error${metrics.errorCount > 1 ? 's' : ''})`);
+  }
+  
+  if (outlierReasons.includes("cpu_p99")) {
+    summaries.push(`🔥 CPU usage is extremely high (p99: ${metrics.cpuPct?.toFixed(1)}%)`);
+  } else if (outlierReasons.includes("cpu_p95")) {
+    summaries.push(`🔥 CPU usage is high (p95: ${metrics.cpuPct?.toFixed(1)}%)`);
+  }
+  
+  if (outlierReasons.includes("mem_p99")) {
+    summaries.push(`💾 Memory usage is extremely high (p99: ${metrics.memMb?.toFixed(0)}MB)`);
+  } else if (outlierReasons.includes("mem_p95")) {
+    summaries.push(`💾 Memory usage is high (p95: ${metrics.memMb?.toFixed(0)}MB)`);
+  }
+  
+  if (outlierReasons.includes("req_p99")) {
+    summaries.push(`📊 Request count is very high (p99: ${metrics.requestCount})`);
+  }
+
+  if (summaries.length === 0) {
+    return "";
+  }
+
+  const bgColor = severity === "critical" ? "#fee" : "#fff8e1";
+  const borderColor = severity === "critical" ? "#e63b2e" : "#f6c36a";
+  
+  const items = summaries.map(s => `<div style="padding:6px 0;line-height:1.4;color:#000;">${s}</div>`).join("");
+  
+  return `<div style="background:${bgColor};border:2px solid ${borderColor};border-radius:10px;padding:14px;margin:12px 0;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+    <div style="font-weight:bold;margin-bottom:8px;color:#000;">⚡ Summary</div>
+    ${items}
+  </div>`;
+}
+
+function renderRecommendations(outlierReasons) {
+  if (!Array.isArray(outlierReasons) || outlierReasons.length === 0) {
+    return "";
+  }
+
+  const hasLatency = outlierReasons.includes("latency_p99") || outlierReasons.includes("latency_p95");
+  const hasCpu = outlierReasons.includes("cpu_p99") || outlierReasons.includes("cpu_p95");
+  const hasMem = outlierReasons.includes("mem_p99") || outlierReasons.includes("mem_p95");
+  const hasError = outlierReasons.includes("error_count_critical");
+  
+  const recommendations = [];
+
+  // Duration이 높을 때
+  if (hasLatency) {
+    // 다른 outlier가 있으면 그것들을 해결하라고 제안
+    if (hasCpu) {
+      recommendations.push("💡 High CPU usage may be causing slow duration. Optimize CPU-intensive operations (e.g., reduce loops, use efficient algorithms).");
+    }
+    if (hasMem) {
+      recommendations.push("💡 High memory usage may be causing slow duration. Check for memory leaks or optimize data structures.");
+    }
+    if (hasError) {
+      recommendations.push("💡 Errors may be increasing duration due to retry logic or exception handling. Fix the errors first.");
+    }
+    
+    // Duration만 높고 다른 outlier가 없으면 전반적인 최적화 제안
+    if (!hasCpu && !hasMem && !hasError) {
+      recommendations.push("💡 Consider optimizing database queries with indexes or caching.");
+      recommendations.push("💡 Use async/await patterns to avoid blocking operations.");
+      recommendations.push("💡 Reduce external API calls or parallelize them.");
+      recommendations.push("💡 Enable compression for large data transfers.");
+    }
+  }
+
+  // CPU만 높을 때 (duration과 무관)
+  if (hasCpu && !hasLatency) {
+    recommendations.push("💡 Profile your code to find CPU bottlenecks and optimize hot paths.");
+  }
+
+  // Memory만 높을 때 (duration과 무관)
+  if (hasMem && !hasLatency) {
+    recommendations.push("💡 Use memory profiler to detect leaks or unnecessary data retention.");
+  }
+
+  // Error만 있을 때
+  if (hasError && !hasLatency) {
+    recommendations.push("💡 Review error logs and add proper error handling or validation.");
+  }
+
+  if (recommendations.length === 0) {
+    return "";
+  }
+
+  const items = recommendations.map(r => `<div style="padding:6px 0;line-height:1.4;color:#000;">${r}</div>`).join("");
+  
+  return `<div style="background:#e8f5e9;border:2px solid #4caf50;border-radius:10px;padding:14px;margin:12px 0;box-shadow:0 2px 8px rgba(76,175,80,0.2);">
+    <div style="font-weight:bold;margin-bottom:8px;color:#000;">💡 Recommendations</div>
+    ${items}
+  </div>`;
 }
 
 function colorFromKey(key) {
@@ -126,8 +227,8 @@ const chart = new Chart(chartEl, {
         grid: { color: "rgba(255,255,255,0.06)" }
       },
       y: {
-        min: 0,
-        max: 100,
+        min: -5,
+        max: 105,
         title: { display: true, text: "Percentile" },
         ticks: { color: "#9fb0a8" },
         grid: { color: "rgba(255,255,255,0.06)" }
@@ -201,9 +302,9 @@ async function loadEventDetail(eventId) {
   const serviceName = event.serviceName || "unknown";
 
   // 이벤트 이름을 큰 헤더로 표시
-  const eventHeader = `<div style="padding:12px;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:#fff;border-radius:8px;margin-bottom:16px;">
-    <div style="font-size:18px;font-weight:bold;margin-bottom:4px;">${eventName}</div>
-    <div style="font-size:12px;opacity:0.9;">${serviceName} • ${severity.toUpperCase()}</div>
+  const eventHeader = `<div style="padding:16px;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:#fff;border-radius:10px;margin-bottom:16px;box-shadow:0 4px 12px rgba(102,126,234,0.3);">
+    <div style="font-size:20px;font-weight:bold;margin-bottom:4px;">${eventName}</div>
+    <div style="font-size:13px;opacity:0.9;">${serviceName} • ${severity.toUpperCase()}</div>
   </div>`;
 
   const timeRows = [
@@ -262,30 +363,51 @@ async function loadEventDetail(eventId) {
     });
   }
 
-  detailMetrics.innerHTML =
-    eventHeader +
-    renderGroup("Time", timeRows) +
-    renderGroup("Severity", [
-      { label: "level", value: severity }
-    ]) +
-    renderOutlierReasons(outlierReasons) +
-    renderGroup("Performance", performanceRows) +
-    renderGroup("Requests", requestRows) +
-    renderGroup("Data", dataRows);
+  // 좌측 컬럼: Event Header + Summary + Recommendations
+  const leftColumn = `
+    <div style="flex:1;min-width:320px;padding-right:16px;">
+      ${eventHeader}
+      ${renderSummary(severity, outlierReasons, metrics, percentiles)}
+      ${renderRecommendations(outlierReasons)}
+    </div>
+  `;
 
+  // 우측 컬럼: Time, Severity, Performance, Requests, Data
+  const rightColumn = `
+    <div style="flex:1;min-width:320px;">
+      ${renderGroup("Time", timeRows)}
+      ${renderGroup("Severity", [{ label: "level", value: severity }])}
+      ${renderGroup("Performance", performanceRows)}
+      ${renderGroup("Requests", requestRows)}
+      ${renderGroup("Data", dataRows)}
+    </div>
+  `;
+
+  detailMetrics.innerHTML = `
+    <div style="display:flex;gap:24px;flex-wrap:wrap;">
+      ${leftColumn}
+      ${rightColumn}
+    </div>
+  `;
+
+  detailTrace.innerHTML = "";
+  const traceContainer = document.createElement("div");
+  traceContainer.style.cssText = "background:rgba(255,255,255,0.03);border-radius:8px;padding:12px;";
+  
   if (trace.length === 0) {
     const row = document.createElement("div");
     row.className = "kv-row";
     row.innerHTML = "<span>No trace steps</span><span>-</span>";
-    detailTrace.appendChild(row);
+    traceContainer.appendChild(row);
   } else {
     for (const step of trace) {
       const row = document.createElement("div");
       row.className = "kv-row";
       row.innerHTML = `<span>${step.name}</span><span>${formatValue(step.value, "")}</span>`;
-      detailTrace.appendChild(row);
+      traceContainer.appendChild(row);
     }
   }
+  detailTrace.appendChild(traceContainer);
 }
 
 chartEl.addEventListener("click", (event) => {

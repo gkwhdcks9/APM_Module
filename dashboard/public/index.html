@@ -28,29 +28,33 @@
         </div>
       </section>
 
-      <section class="card">
-        <div class="chart-wrap">
-          <canvas id="chart" aria-label="APM live chart" role="img"></canvas>
-        </div>
-        <p class="note">Time axis starts when the server boots.</p>
-      </section>
+      <div class="dashboard-layout">
+        <section class="card chart-section">
+          <div class="chart-wrap">
+            <canvas id="chart" aria-label="APM live chart" role="img"></canvas>
+          </div>
+          <p class="note">Time axis starts when the server boots.</p>
+        </section>
 
-      <section class="detail" id="detail">
-        <div class="detail-header">
-          <h2>Event Details</h2>
-          <span class="pill" id="detail-id">None selected</span>
-        </div>
-        <div class="detail-grid">
-          <div>
-            <h3>Metrics</h3>
-            <div class="kv" id="detail-metrics"></div>
+        <section class="detail" id="detail">
+          <div class="detail-header">
+            <h2>Event Details</h2>
+            <span class="pill" id="detail-id">None selected</span>
           </div>
-          <div>
-            <h3>Trace Steps</h3>
-            <div class="kv" id="detail-trace"></div>
+          <div class="detail-content">
+            <div class="detail-grid">
+              <div>
+                <h3>Metrics</h3>
+                <div class="kv" id="detail-metrics"></div>
+              </div>
+              <div>
+                <h3>Trace Steps</h3>
+                <div class="kv" id="detail-trace"></div>
+              </div>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </div>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
