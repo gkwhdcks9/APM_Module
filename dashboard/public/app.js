@@ -8,6 +8,7 @@ const sampleBtn = document.getElementById("sample-btn");
 const MAX_POINTS = 400;
 const metricColors = new Map();
 let serverStart = null;
+let selectedEventId = null;
 
 const metricUnits = {
   durationMs: "ms",
@@ -96,8 +97,18 @@ const chart = new Chart(chartEl, {
         pointRadius: 5,
         pointHoverRadius: 7,
         pointBackgroundColor: (ctx) => (ctx.raw ? ctx.raw.color : "#6ed0a5"),
-        pointBorderColor: "rgba(0,0,0,0.4)",
-        pointBorderWidth: 1
+        pointBorderColor: (ctx) => {
+          if (ctx.raw && ctx.raw.eventId === selectedEventId) {
+            return "#00bfff";
+          }
+          return "rgba(0,0,0,0.4)";
+        },
+        pointBorderWidth: (ctx) => {
+          if (ctx.raw && ctx.raw.eventId === selectedEventId) {
+            return 2.5;
+          }
+          return 1;
+        }
       }
     ]
   },
@@ -268,7 +279,9 @@ chartEl.addEventListener("click", (event) => {
     return;
   }
   const point = chart.data.datasets[0].data[points[0].index];
+  selectedEventId = point.eventId;
   loadEventDetail(point.eventId);
+  chart.update("none");
 });
 
 const ws = new WebSocket(`ws://${window.location.host}`);
