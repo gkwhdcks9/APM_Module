@@ -677,6 +677,89 @@ A: `server.js`의 `Math.random() < 0.05 ? 1 : 0` 부분을 수정하세요. (0.0
 
 ---
 
+## 개발 히스토리 & 주요 개선 사항
+
+### 2026.02.12 - Dashboard UX 대대적 개선
+
+#### 🎯 주요 기능 추가
+
+**1. Summary 섹션 추가**
+- 기존의 "Outlier Reasons" 배지 섹션 제거
+- 대신 사용자 친화적인 Summary로 대체
+- severity가 warning/critical인 이유를 명확한 메시지로 표시
+  - Duration이 p99/p95: "⚠️ Duration is extremely high/high"
+  - Error 발생: "❌ Errors detected (N errors)"
+  - CPU/Memory p99/p95: "🔥/💾 usage is extremely high/high"
+- Background color로 severity 구분 (critical: 빨강, warning: 노랑)
+
+**2. Recommendations 섹션 추가**
+- AI 기반 개선 방안 자동 제시
+- Duration이 높을 때 다른 outlier 존재 여부에 따라 다른 제안:
+  - CPU 높음 → "Optimize CPU-intensive operations"
+  - Memory 높음 → "Check for memory leaks"
+  - Error 있음 → "Fix the errors first (retry logic)"
+  - 다른 outlier 없음 → 전반적인 최적화 제안
+    - Database query optimization
+    - Async/await patterns
+    - External API parallelization
+    - Compression for large transfers
+- 초록색 배경으로 긍정적 느낌
+
+**3. 레이아웃 재설계**
+- Event Details를 2열 구조로 변경:
+  - 좌측: Event Header, Summary, Recommendations
+  - 우측: Time, Severity, Performance, Requests, Data
+- 그래프와 Event Details를 좌우로 배치하여 한 화면에서 조회 가능
+  - 좌측(55%): 차트
+  - 우측(45%): 이벤트 상세
+- 스크롤 없이 전체 정보 파악 가능
+
+**4. UI/UX 개선**
+- 모든 섹션에 카드 스타일 적용 (배경색 + 둥근 모서리)
+- 그림자 효과로 깊이감 추가
+- Event Details에 커스텀 스크롤바 (초록색 accent)
+- 모든 텍스트에 명시적 color 지정으로 가독성 향상
+- 반응형 디자인: 화면 작으면 세로로 자동 정렬
+
+#### 🐛 버그 수정
+
+**errorCount percentile 해석 오류 수정**
+- 문제: errorCount = 0일 때 p96으로 표시되어 혼란스러움
+  - 히스토그램 대부분이 0이므로, percentile 계산 시 높은 값이 나옴
+  - "에러가 없는데 왜 높은 percentile?" 이라는 반직관적 결과
+- 해결: errorCount는 "낮을수록 좋은" 지표이므로 `100 - percentile`로 역전
+  - 기존: errorCount 0 → p96 (혼란)
+  - 수정: errorCount 0 → p4 (직관적)
+- 변경 파일: `dashboard/server.js` - processPayload 함수
+
+#### 📊 시각화 개선
+
+**Y축 범위 조정**
+- 기존: 0~100
+- 변경: -5~105
+- 이유: percentile 값들이 더 넓은 범위에서 표시되어 패턴 명확화
+- 요청에 따라 -20~120 → -5~105로 미세 조정
+
+#### 🎨 스타일링 개선
+- Event Header: 그라디언트 배경 + 그림자 효과
+- Summary/Recommendations: 선명한 border + box-shadow
+- 섹션 제목: accent 컬러 + 대문자 + letter-spacing
+- Trace Steps: 배경 추가로 다른 섹션과 일관성 유지
+
+#### 📝 코드 구조 개선
+- `renderOutlierReasons()` 함수 제거
+- `renderSummary()` 함수 추가 (severity 기반 메시지 생성)
+- `renderRecommendations()` 함수 추가 (문제 분석 + 해결책 제시)
+- `renderGroup()` 함수에 카드 스타일 통합
+
+#### 🔧 기술적 개선
+- CSS Flexbox 활용한 반응형 레이아웃
+- CSS custom properties 활용
+- WebKit scrollbar 커스터마이징
+- min-width 설정으로 반응형 breakpoint 명확화
+
+---
+
 ## 라이선스
 
 MIT
